@@ -1,5 +1,21 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
+interface ImageState {
+  id: string;
+  url: string;
+  size: number;
+  shadow: boolean;
+  position: {
+    x: number;
+    y: number;
+  };
+  border: {
+    show: boolean;
+    width: number;
+    color: string;
+  };
+}
+
 interface BannerState {
   title: string;
   subtitle: string;
@@ -7,9 +23,7 @@ interface BannerState {
   subtitleSize: number;
   backgroundColor: string;
   gradientColor: string;
-  image: string;
-  imageSize: number;
-  imageShadow: boolean;
+  images: ImageState[];
   aspectRatio: string;
   textAlignment: 'top' | 'center' | 'bottom';
   padding: {
@@ -21,6 +35,9 @@ interface BannerState {
   subtitleColor: string;
   textWidth: number;
   fontFamily: string;
+  showBorder: boolean;
+  borderWidth: number;
+  borderColor: string;
 }
 
 const ASPECT_RATIOS = {
@@ -40,9 +57,7 @@ export const defaultState: BannerState = {
   subtitleSize: 20,
   backgroundColor: '#3B82F6',
   gradientColor: '#9333EA',
-  image: '',
-  imageSize: 400,
-  imageShadow: false,
+  images: [],
   aspectRatio: 'facebook',
   textAlignment: 'center',
   padding: {
@@ -53,7 +68,10 @@ export const defaultState: BannerState = {
   titleColor: '#FFFFFF',
   subtitleColor: '#FFFFFF',
   textWidth: 60,
-  fontFamily: 'Arial'
+  fontFamily: 'Arial',
+  showBorder: false,
+  borderWidth: 4,
+  borderColor: '#000000'
 };
 
 const loadState = (): BannerState => {
@@ -64,10 +82,10 @@ const loadState = (): BannerState => {
     }
     const savedState = JSON.parse(serializedState);
     
-    // Migrate old state to new state structure
     return {
       ...defaultState,
       ...savedState,
+      images: savedState.images ?? [],
       padding: {
         top: savedState.padding?.top ?? defaultState.padding.top,
         bottom: savedState.padding?.bottom ?? defaultState.padding.bottom,
@@ -77,9 +95,10 @@ const loadState = (): BannerState => {
       titleColor: savedState.titleColor ?? defaultState.titleColor,
       subtitleColor: savedState.subtitleColor ?? defaultState.subtitleColor,
       textWidth: savedState.textWidth ?? defaultState.textWidth,
-      imageSize: savedState.imageSize ?? defaultState.imageSize,
-      imageShadow: savedState.imageShadow ?? defaultState.imageShadow,
-      fontFamily: savedState.fontFamily ?? defaultState.fontFamily
+      fontFamily: savedState.fontFamily ?? defaultState.fontFamily,
+      showBorder: savedState.showBorder ?? defaultState.showBorder,
+      borderWidth: savedState.borderWidth ?? defaultState.borderWidth,
+      borderColor: savedState.borderColor ?? defaultState.borderColor
     };
   } catch (err) {
     return defaultState;
@@ -123,17 +142,63 @@ export const bannerSlice = createSlice({
       state.gradientColor = action.payload;
       saveState(state);
     },
-    setImage: (state, action: PayloadAction<string>) => {
-      state.image = action.payload;
+    addImage: (state, action: PayloadAction<string>) => {
+      const newImage: ImageState = {
+        id: Date.now().toString(),
+        url: action.payload,
+        size: 400,
+        shadow: false,
+        position: { x: 0, y: 0 },
+        border: {
+          show: false,
+          width: 2,
+          color: '#000000'
+        }
+      };
+      state.images.push(newImage);
       saveState(state);
     },
-    setImageSize: (state, action: PayloadAction<number>) => {
-      state.imageSize = action.payload;
+    removeImage: (state, action: PayloadAction<string>) => {
+      state.images = state.images.filter(img => img.id !== action.payload);
       saveState(state);
     },
-    setImageShadow: (state, action: PayloadAction<boolean>) => {
-      state.imageShadow = action.payload;
-      saveState(state);
+    updateImagePosition: (state, action: PayloadAction<{ id: string; position: { x: number; y: number } }>) => {
+      const image = state.images.find(img => img.id === action.payload.id);
+      if (image) {
+        image.position = action.payload.position;
+        saveState(state);
+      }
+    },
+    updateImageSize: (state, action: PayloadAction<{ id: string; size: number }>) => {
+      const image = state.images.find(img => img.id === action.payload.id);
+      if (image) {
+        image.size = action.payload.size;
+        saveState(state);
+      }
+    },
+    updateImageShadow: (state, action: PayloadAction<{ id: string; shadow: boolean }>) => {
+      const image = state.images.find(img => img.id === action.payload.id);
+      if (image) {
+        image.shadow = action.payload.shadow;
+        saveState(state);
+      }
+    },
+    updateImageBorder: (state, action: PayloadAction<{
+      id: string;
+      border: {
+        show?: boolean;
+        width?: number;
+        color?: string;
+      };
+    }>) => {
+      const image = state.images.find(img => img.id === action.payload.id);
+      if (image) {
+        image.border = {
+          ...image.border,
+          ...action.payload.border
+        };
+        saveState(state);
+      }
     },
     setAspectRatio: (state, action: PayloadAction<AspectRatioKey>) => {
       state.aspectRatio = action.payload;
@@ -163,6 +228,18 @@ export const bannerSlice = createSlice({
       state.fontFamily = action.payload;
       saveState(state);
     },
+    setShowBorder: (state, action: PayloadAction<boolean>) => {
+      state.showBorder = action.payload;
+      saveState(state);
+    },
+    setBorderWidth: (state, action: PayloadAction<number>) => {
+      state.borderWidth = action.payload;
+      saveState(state);
+    },
+    setBorderColor: (state, action: PayloadAction<string>) => {
+      state.borderColor = action.payload;
+      saveState(state);
+    },
     resetToDefault: (state) => {
       Object.assign(state, defaultState);
       saveState(state);
@@ -177,9 +254,12 @@ export const {
   setSubtitleSize,
   setBackgroundColor,
   setGradientColor,
-  setImage,
-  setImageSize,
-  setImageShadow,
+  addImage,
+  removeImage,
+  updateImagePosition,
+  updateImageSize,
+  updateImageShadow,
+  updateImageBorder,
   setAspectRatio,
   setTextAlignment,
   setPadding,
@@ -187,6 +267,9 @@ export const {
   setSubtitleColor,
   setTextWidth,
   setFontFamily,
+  setShowBorder,
+  setBorderWidth,
+  setBorderColor,
   resetToDefault
 } = bannerSlice.actions;
 
