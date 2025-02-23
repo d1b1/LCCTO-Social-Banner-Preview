@@ -16,6 +16,7 @@ import {
   updateImagePosition,
   updateImageSize,
   updateImageShadow,
+  updateImageBorder,
   setAspectRatio,
   setTextAlignment,
   setPadding,
