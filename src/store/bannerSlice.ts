@@ -8,6 +8,8 @@ interface BannerState {
   backgroundColor: string;
   gradientColor: string;
   image: string;
+  imageSize: number;
+  imageShadow: boolean;
   aspectRatio: string;
   textAlignment: 'top' | 'center' | 'bottom';
   padding: {
@@ -18,19 +20,20 @@ interface BannerState {
   titleColor: string;
   subtitleColor: string;
   textWidth: number;
+  fontFamily: string;
 }
 
 const ASPECT_RATIOS = {
-  'facebook': { width: 1200, height: 628, label: 'Facebook (1.91:1)' },
-  'twitter': { width: 1200, height: 675, label: 'Twitter (16:9)' },
-  'instagram': { width: 1080, height: 1080, label: 'Instagram (1:1)' },
-  'linkedin': { width: 1200, height: 627, label: 'LinkedIn (1.91:1)' },
+  'facebook': { width: 1200, height: 628, ratio: '1.91:1' },
+  'twitter': { width: 1200, height: 675, ratio: '16:9' },
+  'instagram': { width: 1080, height: 1080, ratio: '1:1' },
+  'linkedin': { width: 1200, height: 627, ratio: '1.91:1' },
 } as const;
 
 export type AspectRatioKey = keyof typeof ASPECT_RATIOS;
 export { ASPECT_RATIOS };
 
-const defaultState: BannerState = {
+export const defaultState: BannerState = {
   title: 'Your Title Here',
   subtitle: 'Your subtitle goes here',
   titleSize: 48,
@@ -38,6 +41,8 @@ const defaultState: BannerState = {
   backgroundColor: '#3B82F6',
   gradientColor: '#9333EA',
   image: '',
+  imageSize: 400,
+  imageShadow: false,
   aspectRatio: 'facebook',
   textAlignment: 'center',
   padding: {
@@ -47,7 +52,8 @@ const defaultState: BannerState = {
   },
   titleColor: '#FFFFFF',
   subtitleColor: '#FFFFFF',
-  textWidth: 60
+  textWidth: 60,
+  fontFamily: 'Arial'
 };
 
 const loadState = (): BannerState => {
@@ -70,7 +76,10 @@ const loadState = (): BannerState => {
       textAlignment: savedState.textAlignment ?? defaultState.textAlignment,
       titleColor: savedState.titleColor ?? defaultState.titleColor,
       subtitleColor: savedState.subtitleColor ?? defaultState.subtitleColor,
-      textWidth: savedState.textWidth ?? defaultState.textWidth
+      textWidth: savedState.textWidth ?? defaultState.textWidth,
+      imageSize: savedState.imageSize ?? defaultState.imageSize,
+      imageShadow: savedState.imageShadow ?? defaultState.imageShadow,
+      fontFamily: savedState.fontFamily ?? defaultState.fontFamily
     };
   } catch (err) {
     return defaultState;
@@ -118,6 +127,14 @@ export const bannerSlice = createSlice({
       state.image = action.payload;
       saveState(state);
     },
+    setImageSize: (state, action: PayloadAction<number>) => {
+      state.imageSize = action.payload;
+      saveState(state);
+    },
+    setImageShadow: (state, action: PayloadAction<boolean>) => {
+      state.imageShadow = action.payload;
+      saveState(state);
+    },
     setAspectRatio: (state, action: PayloadAction<AspectRatioKey>) => {
       state.aspectRatio = action.payload;
       saveState(state);
@@ -141,6 +158,14 @@ export const bannerSlice = createSlice({
     setTextWidth: (state, action: PayloadAction<number>) => {
       state.textWidth = action.payload;
       saveState(state);
+    },
+    setFontFamily: (state, action: PayloadAction<string>) => {
+      state.fontFamily = action.payload;
+      saveState(state);
+    },
+    resetToDefault: (state) => {
+      Object.assign(state, defaultState);
+      saveState(state);
     }
   }
 });
@@ -153,12 +178,16 @@ export const {
   setBackgroundColor,
   setGradientColor,
   setImage,
+  setImageSize,
+  setImageShadow,
   setAspectRatio,
   setTextAlignment,
   setPadding,
   setTitleColor,
   setSubtitleColor,
-  setTextWidth
+  setTextWidth,
+  setFontFamily,
+  resetToDefault
 } = bannerSlice.actions;
 
 export default bannerSlice.reducer;

@@ -1,8 +1,9 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import Draggable from 'react-draggable';
-import { Download, Upload, X } from 'lucide-react';
+import { Download, Upload, X, Trash2, RotateCcw } from 'lucide-react';
 import * as htmlToImage from 'html-to-image';
+import WebFont from 'webfontloader';
 import { RootState } from './store/store';
 import {
   setTitle,
@@ -12,15 +13,38 @@ import {
   setBackgroundColor,
   setGradientColor,
   setImage,
+  setImageSize,
+  setImageShadow,
   setAspectRatio,
   setTextAlignment,
   setPadding,
   setTitleColor,
   setSubtitleColor,
   setTextWidth,
+  setFontFamily,
+  resetToDefault,
   ASPECT_RATIOS,
   type AspectRatioKey
 } from './store/bannerSlice';
+
+// Popular Google Fonts
+const GOOGLE_FONTS = [
+  'Arial',
+  'Roboto',
+  'Open Sans',
+  'Lato',
+  'Montserrat',
+  'Poppins',
+  'Oswald',
+  'Raleway',
+  'Ubuntu',
+  'Playfair Display',
+  'Merriweather',
+  'Source Sans Pro',
+  'Nunito',
+  'PT Sans',
+  'Quicksand'
+];
 
 function App() {
   const dispatch = useDispatch();
@@ -32,12 +56,15 @@ function App() {
     backgroundColor,
     gradientColor,
     image,
+    imageSize,
+    imageShadow,
     aspectRatio,
     textAlignment,
     padding,
     titleColor,
     subtitleColor,
-    textWidth
+    textWidth,
+    fontFamily
   } = useSelector((state: RootState) => state.banner);
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -47,6 +74,16 @@ function App() {
   const [error, setError] = useState('');
   const [imagePosition, setImagePosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
+  const [showImageControls, setShowImageControls] = useState(false);
+
+  useEffect(() => {
+    // Load Google Fonts
+    WebFont.load({
+      google: {
+        families: GOOGLE_FONTS
+      }
+    });
+  }, []);
 
   const currentRatio = ASPECT_RATIOS[aspectRatio as AspectRatioKey];
   const scale = Math.min(
@@ -76,8 +113,16 @@ function App() {
     if (image && imageRef.current) {
       const img = imageRef.current;
       const aspectRatio = img.width / img.height;
-      let drawWidth = 400;
+      let drawWidth = imageSize;
       let drawHeight = drawWidth / aspectRatio;
+      
+      // Apply shadow if enabled
+      if (imageShadow) {
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+        ctx.shadowBlur = 20;
+        ctx.shadowOffsetX = 10;
+        ctx.shadowOffsetY = 10;
+      }
       
       ctx.drawImage(
         img,
@@ -86,11 +131,17 @@ function App() {
         drawWidth,
         drawHeight
       );
+
+      // Reset shadow
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
     }
 
     // Configure text settings
     ctx.textAlign = 'left';
-    const maxWidth = canvas.width * (textWidth / 100); // Convert percentage to actual width
+    const maxWidth = canvas.width * (textWidth / 100);
 
     // Calculate text position based on alignment
     let textY;
@@ -106,7 +157,7 @@ function App() {
     }
 
     // Draw title
-    ctx.font = `bold ${titleSize}px Arial`;
+    ctx.font = `bold ${titleSize}px ${fontFamily}`;
     ctx.fillStyle = titleColor;
     const titleLines = getTextLines(ctx, title, maxWidth);
     titleLines.forEach((line, index) => {
@@ -114,7 +165,7 @@ function App() {
     });
 
     // Draw subtitle
-    ctx.font = `${subtitleSize}px Arial`;
+    ctx.font = `${subtitleSize}px ${fontFamily}`;
     ctx.fillStyle = subtitleColor;
     const subtitleY = textY + (titleLines.length * titleSize * 1.2) + 20;
     const subtitleLines = getTextLines(ctx, subtitle, maxWidth);
@@ -161,12 +212,15 @@ function App() {
     backgroundColor,
     gradientColor,
     image,
+    imageSize,
+    imageShadow,
     aspectRatio,
     textAlignment,
     padding,
     titleColor,
     subtitleColor,
     textWidth,
+    fontFamily,
     imagePosition
   ]);
 
@@ -176,6 +230,7 @@ function App() {
       const reader = new FileReader();
       reader.onloadend = () => {
         dispatch(setImage(reader.result as string));
+        setImagePosition({ x: 0, y: 0 }); // Reset position when new image is uploaded
       };
       reader.readAsDataURL(file);
     }
@@ -223,8 +278,8 @@ function App() {
       const y = (e.clientY - rect.top) / (rect.height / canvas.height);
       
       // Check if click is within image bounds
-      const imageWidth = 400;
-      const imageHeight = imageRef.current ? (400 / imageRef.current.width) * imageRef.current.height : 400;
+      const imageWidth = imageSize;
+      const imageHeight = imageRef.current ? (imageSize / imageRef.current.width) * imageRef.current.height : imageSize;
       const imageX = canvas.width - imageWidth - padding.left + imagePosition.x;
       const imageY = (canvas.height - imageHeight) / 2 + imagePosition.y;
       
@@ -260,6 +315,17 @@ function App() {
         canvasRef.current.style.cursor = 'default';
       }
     }
+  };
+
+  const handleRemoveImage = () => {
+    dispatch(setImage(''));
+    setImagePosition({ x: 0, y: 0 });
+    setShowImageControls(false);
+  };
+
+  const handleReset = () => {
+    dispatch(resetToDefault());
+    setImagePosition({ x: 0, y: 0 });
   };
 
   return (
@@ -309,18 +375,33 @@ function App() {
             </div>
 
             <div className="flex justify-center mb-6">
-              <canvas
-                ref={canvasRef}
-                style={{
-                  width: `${currentRatio.width * scale}px`,
-                  height: `${currentRatio.height * scale}px`
-                }}
-                className="rounded-lg shadow-xl cursor-default"
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-                onMouseLeave={handleMouseUp}
-              />
+              <div 
+                className="relative"
+                onMouseEnter={() => image && setShowImageControls(true)}
+                onMouseLeave={() => setShowImageControls(false)}
+              >
+                <canvas
+                  ref={canvasRef}
+                  style={{
+                    width: `${currentRatio.width * scale}px`,
+                    height: `${currentRatio.height * scale}px`
+                  }}
+                  className="rounded-lg shadow-xl cursor-default"
+                  onMouseDown={handleMouseDown}
+                  onMouseMove={handleMouseMove}
+                  onMouseUp={handleMouseUp}
+                  onMouseLeave={handleMouseUp}
+                />
+                {showImageControls && image && (
+                  <button
+                    onClick={handleRemoveImage}
+                    className="absolute top-4 right-4 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-colors"
+                    title="Remove Image"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
@@ -344,6 +425,37 @@ function App() {
                 </label>
               </div>
 
+              {image && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Image Size ({imageSize}px)
+                    </label>
+                    <input
+                      type="range"
+                      min="200"
+                      max="800"
+                      value={imageSize}
+                      onChange={(e) => dispatch(setImageSize(Number(e.target.value)))}
+                      className="w-full"
+                    />
+                  </div>
+
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="imageShadow"
+                      checked={imageShadow}
+                      onChange={(e) => dispatch(setImageShadow(e.target.checked))}
+                      className="mr-2"
+                    />
+                    <label htmlFor="imageShadow" className="text-sm font-medium text-gray-700">
+                      Add Drop Shadow
+                    </label>
+                  </div>
+                </>
+              )}
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -354,9 +466,9 @@ function App() {
                     onChange={(e) => dispatch(setAspectRatio(e.target.value as AspectRatioKey))}
                     className="w-full p-2 border rounded"
                   >
-                    {Object.entries(ASPECT_RATIOS).map(([key, { label }]) => (
+                    {Object.entries(ASPECT_RATIOS).map(([key, { ratio }]) => (
                       <option key={key} value={key}>
-                        {label}
+                        {ratio}
                       </option>
                     ))}
                   </select>
@@ -388,50 +500,6 @@ function App() {
                   max="80"
                   value={textWidth}
                   onChange={(e) => dispatch(setTextWidth(Number(e.target.value)))}
-                  className="w-full"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Top Padding ({padding.top}px)
-                  </label>
-                  <input
-                    type="range"
-                    min="16"
-                    max="128"
-                    value={padding.top}
-                    onChange={(e) => dispatch(setPadding({ key: 'top', value: Number(e.target.value) }))}
-                    className="w-full"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Bottom Padding ({padding.bottom}px)
-                  </label>
-                  <input
-                    type="range"
-                    min="16"
-                    max="128"
-                    value={padding.bottom}
-                    onChange={(e) => dispatch(setPadding({ key: 'bottom', value: Number(e.target.value) }))}
-                    className="w-full"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Left/Right Padding ({padding.left}px)
-                </label>
-                <input
-                  type="range"
-                  min="16"
-                  max="128"
-                  value={padding.left}
-                  onChange={(e) => dispatch(setPadding({ key: 'left', value: Number(e.target.value) }))}
                   className="w-full"
                 />
               </div>
@@ -517,6 +585,76 @@ function App() {
                   />
                 </div>
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Font Family
+                </label>
+                <select
+                  value={fontFamily}
+                  onChange={(e) => dispatch(setFontFamily(e.target.value))}
+                  className="w-full p-2 border rounded"
+                  style={{ fontFamily: fontFamily }}
+                >
+                  {GOOGLE_FONTS.map(font => (
+                    <option key={font} value={font} style={{ fontFamily: font }}>
+                      {font}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Left Padding ({padding.left}px)
+                </label>
+                <input
+                  type="range"
+                  min="16"
+                  max="128"
+                  value={padding.left}
+                  onChange={(e) => dispatch(setPadding({ key: 'left', value: Number(e.target.value) }))}
+                  className="w-full"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Top Padding ({padding.top}px)
+                  </label>
+                  <input
+                    type="range"
+                    min="16"
+                    max="128"
+                    value={padding.top}
+                    onChange={(e) => dispatch(setPadding({ key: 'top', value: Number(e.target.value) }))}
+                    className="w-full"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Bottom Padding ({padding.bottom}px)
+                  </label>
+                  <input
+                    type="range"
+                    min="16"
+                    max="128"
+                    value={padding.bottom}
+                    onChange={(e) => dispatch(setPadding({ key: 'bottom', value: Number(e.target.value) }))}
+                    className="w-full"
+                  />
+                </div>
+              </div>
+
+              <button
+                onClick={handleReset}
+                className="w-full flex items-center justify-center px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors mt-6"
+              >
+                <RotateCcw className="w-4 h-4 mr-2" />
+                Reset to Default
+              </button>
             </div>
           </div>
         </div>
