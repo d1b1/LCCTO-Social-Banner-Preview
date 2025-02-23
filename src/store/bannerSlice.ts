@@ -9,6 +9,11 @@ interface ImageState {
     x: number;
     y: number;
   };
+  border: {
+    show: boolean;
+    width: number;
+    color: string;
+  };
 }
 
 interface BannerState {
@@ -143,7 +148,12 @@ export const bannerSlice = createSlice({
         url: action.payload,
         size: 400,
         shadow: false,
-        position: { x: 0, y: 0 }
+        position: { x: 0, y: 0 },
+        border: {
+          show: false,
+          width: 2,
+          color: '#000000'
+        }
       };
       state.images.push(newImage);
       saveState(state);
@@ -170,6 +180,23 @@ export const bannerSlice = createSlice({
       const image = state.images.find(img => img.id === action.payload.id);
       if (image) {
         image.shadow = action.payload.shadow;
+        saveState(state);
+      }
+    },
+    updateImageBorder: (state, action: PayloadAction<{
+      id: string;
+      border: {
+        show?: boolean;
+        width?: number;
+        color?: string;
+      };
+    }>) => {
+      const image = state.images.find(img => img.id === action.payload.id);
+      if (image) {
+        image.border = {
+          ...image.border,
+          ...action.payload.border
+        };
         saveState(state);
       }
     },
@@ -232,6 +259,7 @@ export const {
   updateImagePosition,
   updateImageSize,
   updateImageShadow,
+  updateImageBorder,
   setAspectRatio,
   setTextAlignment,
   setPadding,

@@ -431,7 +431,7 @@ function App() {
                     <input
                       type="range"
                       min="32"
-                      max="72"
+                      max="100"
                       value={titleSize}
                       onChange={(e) => dispatch(setTitleSize(Number(e.target.value)))}
                       className="w-full"
@@ -457,7 +457,7 @@ function App() {
                     <input
                       type="range"
                       min="16"
-                      max="48"
+                      max="100"
                       value={subtitleSize}
                       onChange={(e) => dispatch(setSubtitleSize(Number(e.target.value)))}
                       className="w-full"
