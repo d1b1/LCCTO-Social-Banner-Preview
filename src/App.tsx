@@ -726,7 +726,7 @@ function App() {
                           </label>
                           <input
                             type="range"
-                            min="200"
+                            min="10"
                             max="800"
                             value={image.size}
                             onChange={(e) => dispatch(updateImageSize({
